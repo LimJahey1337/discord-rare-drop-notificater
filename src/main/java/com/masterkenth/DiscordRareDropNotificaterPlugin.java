@@ -236,7 +236,7 @@ public class DiscordRareDropNotificaterPlugin extends Plugin
 			return;
 		}
 
-		if (PET_MESSAGES.stream().anyMatch(chatMessage::contains))
+		if (config.sendPets() && PET_MESSAGES.stream().anyMatch(chatMessage::contains))
 		{
 			boolean isDuplicate = chatMessage.contains(PET_MESSAGE_DUPLICATE);
 			log.info(String.format("Possible pet: duplicate=%b (%s, %s) %s", isDuplicate, event.getSender(), event.getName(),
@@ -273,11 +273,41 @@ public class DiscordRareDropNotificaterPlugin extends Plugin
 		return false;
 	}
 
+	/**
+	 * The hand-off ceiling. A stack worth {@code maxValue} or more, by GE or HA price, is left to
+	 * whichever other notifier owns high-value drops. It is checked before the whitelist and the
+	 * unique bypass on purpose: a whitelisted or unique drop above the ceiling would otherwise be
+	 * posted twice. {@code maxValue <= 0} disables the ceiling.
+	 */
+	static boolean isAtOrAboveMaxValue(int maxValue, int gePrice, int haPrice, int quantity)
+	{
+		if (maxValue <= 0)
+		{
+			return false;
+		}
+
+		long totalGeValue = (long) gePrice * quantity;
+		long totalHaValue = (long) haPrice * quantity;
+
+		return totalGeValue >= maxValue || totalHaValue >= maxValue;
+	}
+
 	private CompletableFuture<Boolean> canBeSent(int itemId, int quantity, Supplier<CompletableFuture<ItemData>> itemDataSupplier)
 	{
 		CompletableFuture<Boolean> result = new CompletableFuture<>();
 		ItemComposition comp = itemManager.getItemComposition(itemId);
 		String lowerName = comp.getName().toLowerCase();
+
+		if (isAtOrAboveMaxValue(config.maxValue(), itemManager.getItemPrice(itemId), comp.getHaPrice(), quantity))
+		{
+			if(log.isDebugEnabled())
+			{
+				log.debug(String.format("%s x%d is at or above the max value, handing off", lowerName, quantity));
+			}
+
+			result.complete(false);
+			return result;
+		}
 
 		List<String> whitelist = Arrays.stream(config.whiteListedItems()
 			.split(",")).map(String::trim).filter(itemName -> itemName.length() > 0)

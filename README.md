@@ -1,6 +1,20 @@
 # Discord Rare Drop Notifier
 __Plugin for RuneLite__
 
+Maintained here since September 2026 under RuneLite's plugin takeover policy; the
+[previous repository](https://github.com/BossHuso/discord-rare-drop-notificater) had been
+inactive since October 2024. Existing settings carry over unchanged. Report problems in this
+repository's Issues.
+
+## New in 1.5.0
+* **Max value (hand-off)** in *Item Filters* - drops worth this much or more (GE or HA, whole stack)
+  are *not* posted, whitelist and event uniques included. Set it to another notifier's minimum (for
+  Dink, its *Min Loot value*) so every drop is posted by exactly one plugin. `0` (the default) disables it.
+* **Send pets** toggle in *Webhook Options* - turn off if another plugin already posts your pets.
+* Item list entries are trimmed of surrounding whitespace (#107), and missing rarity tables log at
+  debug level instead of spamming warnings (#109). Builds on the current Plugin Hub tooling.
+
+
 ![logo](readme-resources/logo.png)
 
 ## Description
