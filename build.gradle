@@ -1,7 +1,5 @@
 plugins {
 	id 'java'
-	id 'idea'
-	id "io.freefair.lombok" version "5.3.0"
 }
 
 repositories {
@@ -13,28 +11,30 @@ repositories {
 }
 
 def runeLiteVersion = 'latest.release'
+def lombokVersion = '1.18.30'
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
+
+	// Lombok the way the Plugin Hub's standard build declares it. The io.freefair.lombok
+	// Gradle plugin the original used does not resolve under the hub's Gradle 8.10.
+	compileOnly "org.projectlombok:lombok:${lombokVersion}"
+	annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
 	implementation group: 'org.json', name: 'json', version: '20200518'
 	implementation group: 'org.jsoup', name: 'jsoup', version: '1.13.1'
 
 	testImplementation 'junit:junit:4.13.2'
 	testImplementation group: 'net.runelite', name:'client', version: runeLiteVersion
-}
-
-idea {
-	module {
-		downloadJavadoc = false
-		downloadSources = false
-	}
+	testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+	testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 }
 
 group = 'com.masterkenth'
 version = '1.5.0'
-sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile).configureEach {
+	options.release.set(11)
 	options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
 	options.encoding = 'UTF-8'
 }
