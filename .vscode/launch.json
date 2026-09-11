@@ -14,7 +14,7 @@
       "type": "java",
       "name": "Plugin Test",
       "request": "launch",
-      "mainClass": "com.masterkenth.DiscordRareDropNotificaterPluginTest",
+      "mainClass": "com.masterkenth.DiscordRareDropHandoffPluginTest",
       "projectName": "discord-rare-drop-notificater"
     }
   ]

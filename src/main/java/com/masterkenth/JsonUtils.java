@@ -23,7 +23,7 @@ public class JsonUtils
 	public JsonUtils(Gson gson)
 	{
 		try(InputStreamReader reader = new InputStreamReader(
-				Objects.requireNonNull(DiscordRareDropNotificaterPlugin.class.getResourceAsStream("/monster-drops.json")),
+				Objects.requireNonNull(DiscordRareDropHandoffPlugin.class.getResourceAsStream("/monster-drops.json")),
 				StandardCharsets.UTF_8)) {
 			npcList = gson.fromJson(reader, new TypeToken<List<Npc>>() {}.getType());
 		}

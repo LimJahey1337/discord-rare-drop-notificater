@@ -32,8 +32,8 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("discordraredropnotificater")
-public interface DiscordRareDropNotificaterConfig extends Config
+@ConfigGroup("discordraredrophandoff")
+public interface DiscordRareDropHandoffConfig extends Config
 {
 	@ConfigSection(
 			position = 1,
@@ -100,11 +100,24 @@ public interface DiscordRareDropNotificaterConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "maxvalue",
+		name = "Max value (hand-off)",
+		description = "Drops worth this much or more (GE or HA, whole stack) are NOT posted, whitelist and uniques included. 0 disables.<br>"
+			+ "Set it to another notifier's minimum (e.g. Dink's 'Min Loot value') so every drop is posted by exactly one plugin",
+		section = itemFiltersSection,
+		position = 3
+	)
+	default int maxValue()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
 		keyName = "andinsteadofor",
 		name = "Require both rarity and value",
 		description = "Whether drops should meet both rarity AND value requirements to get posted",
 		section = itemFiltersSection,
-		position = 3
+		position = 4
 	)
 	default boolean andInsteadOfOr()
 	{
@@ -116,7 +129,7 @@ public interface DiscordRareDropNotificaterConfig extends Config
 		name = "Always send uniques (events)",
 		description = "Whether unique drops from events should always get posted (COX, TOB, ...)",
 		section = itemFiltersSection,
-		position = 4
+		position = 5
 	)
 	default boolean sendUniques()
 	{
@@ -131,6 +144,18 @@ public interface DiscordRareDropNotificaterConfig extends Config
 			position = 4
 	)
 	default boolean sendScreenshot()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "sendpets",
+			name = "Send pets",
+			description = "Whether pet drops are posted. Turn off if another notifier (e.g. Dink) already posts pets to the same channel",
+			section = webhookOptionsSection,
+			position = 5
+	)
+	default boolean sendPets()
 	{
 		return true;
 	}

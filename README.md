@@ -1,5 +1,25 @@
-# Discord Rare Drop Notifier
+# Discord Rare Drop Notifier (Hand-off)
 __Plugin for RuneLite__
+
+A fork of [BossHuso/discord-rare-drop-notificater](https://github.com/BossHuso/discord-rare-drop-notificater)
+(itself a continuation of MasterKenth's original), made so the plugin can run **alongside Dink** without
+posting the same drop twice. The upstream repository has had no commits since October 2024 and open pull
+requests since February 2025, so the pending community fixes are carried here too.
+
+## What this fork adds
+* **Max value (hand-off)** - drops worth this much or more (GE or HA, whole stack) are *not* posted, whitelist
+  and event uniques included. Set it to the other notifier's minimum (for Dink, its *Min Loot value*) and every
+  drop is posted by exactly one plugin: this one below the line, Dink at or above it. `0` disables it.
+* **Send pets** toggle - off if Dink already posts your pets to the same channel.
+* **One-time settings migration** - on first start, webhook URL, thresholds and item lists are copied from the
+  original plugin's config, so switching over needs no re-typing. Uninstall the original afterwards.
+* Upstream PR [#107](https://github.com/BossHuso/discord-rare-drop-notificater/pull/107) (trim whitespace in
+  item lists) and [#109](https://github.com/BossHuso/discord-rare-drop-notificater/pull/109) (missing rarity
+  tables log at debug instead of warn), with their authors' commits intact.
+
+Everything below is the original plugin's documentation and still applies.
+
+---
 
 ![logo](readme-resources/logo.png)
 

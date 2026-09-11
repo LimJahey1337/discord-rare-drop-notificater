@@ -71,16 +71,24 @@ import org.json.JSONObject;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Discord Rare Drop Notificater",
-	description = "Sends a detailed notification via Discord webhooks whenever you get a rare/unique drop.",
-	tags = {"discord", "loot", "unique", "boss", "notification"}
+	name = "Discord Rare Drop Notifier (Hand-off)",
+	description = "Sends a detailed notification via Discord webhooks whenever you get a rare/unique drop, with a max-value hand-off so it can run alongside Dink.",
+	tags = {"discord", "loot", "unique", "boss", "notification", "dink"}
 )
-public class DiscordRareDropNotificaterPlugin extends Plugin
+public class DiscordRareDropHandoffPlugin extends Plugin
 {
 	private static final String PET_MESSAGE_DUPLICATE = "You have a funny feeling like you would have been followed";
 	private static final ImmutableList<String> PET_MESSAGES = ImmutableList.of(
 		"You have a funny feeling like you're being followed", "You feel something weird sneaking into your backpack",
 		"You have a funny feeling like you would have been followed", PET_MESSAGE_DUPLICATE);
+
+	// Config group of the original Discord Rare Drop Notificater this plugin forked from.
+	// Settings are copied from it once, so switching plugins keeps webhooks and thresholds.
+	private static final String LEGACY_CONFIG_GROUP = "discordraredropnotificater";
+	private static final String CONFIG_GROUP = "discordraredrophandoff";
+	private static final ImmutableList<String> MIGRATED_KEYS = ImmutableList.of(
+		"webhookurl", "minrarity", "minvalue", "andinsteadofor", "eventuniques", "sendscreenshot",
+		"ignoredkeywords", "whiteListedItems", "whiteListedRSNs", "sendEmbeddedMessage", "sendRarityAndValue");
 
 	@Inject
 	private Client client;
@@ -89,7 +97,10 @@ public class DiscordRareDropNotificaterPlugin extends Plugin
 	private ClientThread clientThread;
 
 	@Inject
-	private DiscordRareDropNotificaterConfig config;
+	private DiscordRareDropHandoffConfig config;
+
+	@Inject
+	private ConfigManager configManager;
 
 	@Inject
 	private ItemManager itemManager;
@@ -106,9 +117,42 @@ public class DiscordRareDropNotificaterPlugin extends Plugin
 	private CompletableFuture<java.awt.Image> queuedScreenshot = null;
 
 	@Provides
-	DiscordRareDropNotificaterConfig provideConfig(ConfigManager configManager)
+	DiscordRareDropHandoffConfig provideConfig(ConfigManager configManager)
 	{
-		return configManager.getConfig(DiscordRareDropNotificaterConfig.class);
+		return configManager.getConfig(DiscordRareDropHandoffConfig.class);
+	}
+
+	@Override
+	protected void startUp()
+	{
+		migrateLegacyConfig();
+	}
+
+	/**
+	 * Copies settings from the original plugin's config group the first time this plugin runs,
+	 * so a user switching over does not have to re-enter their webhook and thresholds.
+	 * Only runs while this plugin has no webhook of its own and the original has one.
+	 */
+	private void migrateLegacyConfig()
+	{
+		String ownWebhook = configManager.getConfiguration(CONFIG_GROUP, "webhookurl");
+		String legacyWebhook = configManager.getConfiguration(LEGACY_CONFIG_GROUP, "webhookurl");
+		if ((ownWebhook != null && !ownWebhook.trim().isEmpty()) || legacyWebhook == null || legacyWebhook.trim().isEmpty())
+		{
+			return;
+		}
+
+		int copied = 0;
+		for (String key : MIGRATED_KEYS)
+		{
+			String value = configManager.getConfiguration(LEGACY_CONFIG_GROUP, key);
+			if (value != null)
+			{
+				configManager.setConfiguration(CONFIG_GROUP, key, value);
+				copied++;
+			}
+		}
+		log.info("Copied {} setting(s) from the original Discord Rare Drop Notificater config", copied);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -236,7 +280,7 @@ public class DiscordRareDropNotificaterPlugin extends Plugin
 			return;
 		}
 
-		if (PET_MESSAGES.stream().anyMatch(chatMessage::contains))
+		if (config.sendPets() && PET_MESSAGES.stream().anyMatch(chatMessage::contains))
 		{
 			boolean isDuplicate = chatMessage.contains(PET_MESSAGE_DUPLICATE);
 			log.info(String.format("Possible pet: duplicate=%b (%s, %s) %s", isDuplicate, event.getSender(), event.getName(),
@@ -273,11 +317,41 @@ public class DiscordRareDropNotificaterPlugin extends Plugin
 		return false;
 	}
 
+	/**
+	 * The hand-off ceiling. A stack worth {@code maxValue} or more, by GE or HA price, is left to
+	 * whichever other notifier owns high-value drops. It is checked before the whitelist and the
+	 * unique bypass on purpose: a whitelisted or unique drop above the ceiling would otherwise be
+	 * posted twice. {@code maxValue <= 0} disables the ceiling.
+	 */
+	static boolean isAtOrAboveMaxValue(int maxValue, int gePrice, int haPrice, int quantity)
+	{
+		if (maxValue <= 0)
+		{
+			return false;
+		}
+
+		long totalGeValue = (long) gePrice * quantity;
+		long totalHaValue = (long) haPrice * quantity;
+
+		return totalGeValue >= maxValue || totalHaValue >= maxValue;
+	}
+
 	private CompletableFuture<Boolean> canBeSent(int itemId, int quantity, Supplier<CompletableFuture<ItemData>> itemDataSupplier)
 	{
 		CompletableFuture<Boolean> result = new CompletableFuture<>();
 		ItemComposition comp = itemManager.getItemComposition(itemId);
 		String lowerName = comp.getName().toLowerCase();
+
+		if (isAtOrAboveMaxValue(config.maxValue(), itemManager.getItemPrice(itemId), comp.getHaPrice(), quantity))
+		{
+			if(log.isDebugEnabled())
+			{
+				log.debug(String.format("%s x%d is at or above the max value, handing off", lowerName, quantity));
+			}
+
+			result.complete(false);
+			return result;
+		}
 
 		List<String> whitelist = Arrays.stream(config.whiteListedItems()
 			.split(",")).map(String::trim).filter(itemName -> itemName.length() > 0)
